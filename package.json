@@ -1,0 +1,19 @@
+{
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "generate": "drizzle-kit generate:pg",
+    "migrate": "drizzle-kit push:pg"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.2.0",
+    "dotenv": "^16.3.1",
+    "drizzle-orm": "^0.28.6",
+    "hono": "^3.7.2",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.10.4",
+    "drizzle-kit": "^0.19.13",
+    "tsx": "^3.12.2"
+  }
+}

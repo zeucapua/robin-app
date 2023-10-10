@@ -1,0 +1,34 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1696898916450,
+      "tag": "0000_opposite_matthew_murdock",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1696899848578,
+      "tag": "0001_magical_kinsey_walden",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1696902298547,
+      "tag": "0002_previous_thundra",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1696902379410,
+      "tag": "0003_shallow_inhumans",
+      "breakpoints": true
+    }
+  ]
+}
