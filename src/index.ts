@@ -106,5 +106,9 @@ app.post("/session/:name", async (c) => {
 
 });
 
+const PORT = Number(process.env.PORT) || 3000;
 
-serve(app);
+serve({
+  fetch: app.fetch,
+  port: PORT
+});
