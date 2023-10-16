@@ -17,8 +17,21 @@ export const SiteLayout = (props : { children : any }) => html`
 `;
 
 
-export const Projects = () => (
-  <p hx-get="/api/projects" hx-swap="innerHTML">
-    Projects
-  </p>
-)
+export const Session = (props: { id: number, start: Date | null, end: Date | null, projectName: string}) => {
+  return (
+    <>
+    <p>{props.start?.toLocaleString()}</p>
+    { props.end ? <p>{props.end.toLocaleString()}</p>
+    : <button 
+        type="button" 
+        hx-post={`/htmx/session/${props.projectName}`}
+        hx-trigger="click"
+        hx-swap="outerHTML"
+      >
+        End
+      </button> 
+    }
+    </>
+  );
+}
+  
