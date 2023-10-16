@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "tsx src/index.ts",
+    "start": "tsx src/index.tsx",
     "generate": "drizzle-kit generate:pg",
     "migrate": "drizzle-kit push:pg"
   },

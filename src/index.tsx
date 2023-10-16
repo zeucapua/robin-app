@@ -8,6 +8,7 @@ import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
 import * as dotenv from "dotenv";
+import { Projects, SiteLayout } from './components';
 dotenv.config();
 
 // init
@@ -18,10 +19,16 @@ const pool = new Pool({
 const db = drizzle(pool, { schema });
 
 // routes
-app.get('/', (c) => c.text('Hello Hono!'));
+app.get("/", async (c) => {
+  return c.html(
+    <SiteLayout>
+      <Projects />
+    </SiteLayout>
+  );
+});
 
 // project routes
-app.get("/projects", async (c) => {
+app.get("/api/projects", async (c) => {
   const projects = await db.query.projects.findMany({
     with: { sessions: true }
   });
@@ -32,7 +39,7 @@ app.get("/projects", async (c) => {
   });
 });
 
-app.get("/project/:name", async (c) => {
+app.get("/api/project/:name", async (c) => {
   const name = c.req.param("name") as string;
   const result = await db.query.projects.findFirst({
     where: eq(schema.projects.name, name),
@@ -44,7 +51,7 @@ app.get("/project/:name", async (c) => {
   return c.json({ result });
 });
 
-app.post("/project/:name", async (c) => {
+app.post("/api/project/:name", async (c) => {
   // get param from path
   const name = c.req.param("name") as string;
 
@@ -56,20 +63,20 @@ app.post("/project/:name", async (c) => {
 
 
 // session routes
-app.get("/session/:name", async (c) => {
+app.get("/api/session/:name", async (c) => {
   const name = c.req.param("name") as string;
 
   const result = await db.query.sessions.findMany({
     where: eq(schema.sessions.projectName, name)
   });
 
-  console.info("/session/:name", { result });
+  console.info("/api/session/:name", { result });
 
   return c.json({ result });
 });
 
 
-app.post("/session/:name", async (c) => {
+app.post("/api/session/:name", async (c) => {
   const name = c.req.param("name") as string;
 
   // get latest session
@@ -107,6 +114,8 @@ app.post("/session/:name", async (c) => {
 });
 
 const PORT = Number(process.env.PORT) || 3000;
+
+export default app;
 
 serve({
   fetch: app.fetch,
