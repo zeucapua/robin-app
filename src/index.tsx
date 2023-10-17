@@ -8,7 +8,7 @@ import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
 import * as dotenv from "dotenv";
-import { Session, SiteLayout } from './components';
+import { Project, Session, SiteLayout } from './components';
 dotenv.config();
 
 // init
@@ -31,14 +31,7 @@ app.get("/", async (c, next) => {
     { projects.map((p) => {
       return (
         <>
-        <h3 class="text-2xl font-bold">{p.name}</h3>
-        { p.sessions.map((s) => <Session id={s.id} projectName={s.projectName} start={s.start} end={s.end} />)}
-        { 
-          (!(p.sessions.length > 0) || p.sessions?.at(p.sessions.length - 1)?.end) &&
-          <button type="button" hx-post={`/htmx/session/${p.name}`} hx-trigger="click" hx-swap="outerHTML">  
-            Start
-          </button>
-        }
+          <Project id={p.id} name={p.name} sessions={p.sessions} />
         </>
       )
     })}
@@ -135,6 +128,7 @@ app.post("/api/session/:name", async (c) => {
 
 });
 
+
 app.post("/htmx/session/:name", async (c) => {
   const name = c.req.param("name") as string;
 
@@ -154,17 +148,7 @@ app.post("/htmx/session/:name", async (c) => {
     });
     
     return c.html(
-      <>
-      <p>{new Date().toLocaleString()}</p>
-      <button 
-        type="button" 
-        hx-post={`/htmx/session/${name}`}
-        hx-trigger="click"
-        hx-swap="outerHTML"
-      >
-        End
-      </button> 
-      </>
+      <p>Started</p>
     );
   }
   else {
@@ -174,22 +158,13 @@ app.post("/htmx/session/:name", async (c) => {
       .where( eq(schema.sessions.id, latest.id) )
       .returning({ updatedId: schema.sessions.id });
 
+    console.log({ updated });
     return c.html(
-      <>
-      <p>{new Date().toLocaleString()}</p>
-      <button 
-        type="button" 
-        hx-post={`/htmx/session/${name}`} 
-        hx-trigger="click" 
-        hx-swap="delete"
-      >  
-        Start
-      </button>
-      </>
+      <p>Ended</p>
     );
   }
-
 });
+
 const PORT = Number(process.env.PORT) || 3000;
 
 export default app;
