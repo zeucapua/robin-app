@@ -9,7 +9,7 @@ import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
 import { pool, auth, github_auth } from './lucia';
-import { ProjectCreator, Puncher, SiteLayout } from './components';
+import { LogTable, ProjectCreator, Puncher, SiteLayout } from './components';
 import "dotenv/config";
 
 // init
@@ -18,8 +18,11 @@ const app = new Hono();
 // exported for lucia to use
 const db = drizzle(pool, { schema });
 
+// ------------------------------------------ 
+
 
 // page routes
+
 app.get("/", async (c) => {
   const auth_request = auth.handleRequest(c);
   const session = await auth_request.validate();
@@ -30,10 +33,16 @@ app.get("/", async (c) => {
     where: eq(schema.projects.userId, user.userId),
     with: {
       logs: {
-        orderBy: desc(schema.logs.start)
+        orderBy: desc(schema.logs.start),
+        limit: 1
       }
     }
   }); 
+
+  let logs;
+  logs = user && await db.query.logs.findMany({
+    orderBy: desc(schema.logs.start)
+  });
 
   return c.html(
     <SiteLayout>
@@ -65,6 +74,43 @@ app.get("/", async (c) => {
             })
           }
           </div>
+
+          <h3>Your Log Table</h3>
+          { logs && (
+            <table class="text-start table-auto p-2">
+              <thead>
+                <tr>
+                  <th>Duration</th>
+                  <th>Project</th>
+                  <th>Start Time</th>
+                  <th>End Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody
+                id="logs-table"
+                hx-get="/updateLogs"
+                hx-trigger="leslie from:body"
+                hx-target="this" 
+                hx-swap="outerHTML"
+              >
+                { 
+                  logs.map((l) => {
+                    return (
+                      <tr>
+                        <td>n/a</td>
+                        <td>{l.projectId}</td>
+                        <td>{l.start?.toLocaleString()}</td>
+                        <td>{l.end?.toLocaleString()}</td>
+                        <td>n/a</td>
+                      </tr>
+                    )
+                  })
+                }
+              </tbody>
+            </table>
+          )}
           </>
         )}
       </main>
@@ -72,7 +118,12 @@ app.get("/", async (c) => {
   );
 });
 
+
+// ------------------------------------------ 
+
+
 // CRUD
+
 app.post("/createProject", async (c) => {
   // make sure we're authed
   const auth_request = auth.handleRequest(c);
@@ -111,12 +162,14 @@ app.patch("/punch/:id", async (c) => {
     return c.body(null, { status: 500 });
   }
 
+
   if (project?.logs.length === 0 || project?.logs[0].end) {
     // create a new log
     await db
       .insert(schema.logs)
       .values({ projectId: Number.parseInt(project_id) });
 
+    c.header("HX-Trigger", "leslie");
     return c.html(
       <Puncher project={project} action='end' />
     );
@@ -145,7 +198,41 @@ app.delete("/deleteProject/:id", async (c) => {
   return c.html(<div />);
 });
 
+app.patch("/updateLogs", async (c) => {
+  console.log("/updateLogs");
+  const logs = await db.query.logs.findMany({
+    orderBy: desc(schema.logs.start)
+  });
+
+  return c.html(
+    <tbody
+      id="logs-table"
+      hx-get="/updateLogs"
+      hx-trigger="click updateLogs from:body"
+      hx-target="this"
+      hx-swap="outerHTML"
+    >
+    {
+      logs.map((l) => {
+        <tr>
+          <td>n/a</td>
+          <td>{l.projectId}</td>
+          <td>{l.start?.toLocaleString()}</td>
+          <td>{l.end?.toLocaleString()}</td>
+          <td>n/a</td>
+        </tr>
+      })
+    }
+    </tbody>
+  );
+});
+
+
+// ------------------------------------------ 
+
+
 // authentication
+
 app.get("/auth", async (c) => {
   const [url, state] = await github_auth.getAuthorizationUrl();
   setCookie(c, "github_oauth_state", state, {
@@ -223,6 +310,9 @@ app.get("/logout", async (c) => {
     headers: { "Location": "/" }
   });
 });
+
+
+// ------------------------------------------ 
 
 
 const PORT = Number(process.env.PORT) || 3000;

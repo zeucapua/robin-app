@@ -1,5 +1,5 @@
 import { html } from "hono/html";
-import { projects } from "./schema";
+import { logs, projects } from "./schema";
 
 export const SiteLayout = (props : { children : any }) => html`
   <!DOCTYPE html>
@@ -73,4 +73,4 @@ export const Puncher = (props: { project: typeof projects.$inferSelect, action :
       </button>
     </div>
   );
-}
+};
