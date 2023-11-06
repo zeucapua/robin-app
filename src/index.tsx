@@ -9,8 +9,9 @@ import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
 import { pool, auth, github_auth } from './lucia';
-import { LogTable, ProjectCreator, Puncher, SiteLayout } from './components';
+import { ProjectCreator, Puncher, SiteLayout } from './components';
 import "dotenv/config";
+import { getDuration } from './utils';
 
 // init
 const app = new Hono();
@@ -28,7 +29,7 @@ app.get("/", async (c) => {
   const session = await auth_request.validate();
 
   const user = session?.user;
-  let projects;
+  let projects = undefined;
   projects = user && await db.query.projects.findMany({
     where: eq(schema.projects.userId, user.userId),
     with: {
@@ -39,7 +40,7 @@ app.get("/", async (c) => {
     }
   }); 
 
-  let logs;
+  let logs = undefined;
   logs = user && await db.query.logs.findMany({
     orderBy: desc(schema.logs.start)
   });
@@ -77,33 +78,51 @@ app.get("/", async (c) => {
 
           <h3>Your Log Table</h3>
           { logs && (
-            <table class="text-start table-auto p-2">
-              <thead>
-                <tr>
-                  <th>Duration</th>
-                  <th>Project</th>
-                  <th>Start Time</th>
-                  <th>End Time</th>
-                  <th>Actions</th>
+            <table class="overflow-hidden w-full table table-auto border-separate border border-slate-500 rounded-xl p-0">
+              <thead class="table-header-group">
+                <tr class="table-row text-start border-b-2 border-slate-500">
+                  <th class="table-cell p-4">Duration</th>
+                  <th class="table-cell p-4">Project</th>
+                  <th class="table-cell p-4">Start Time</th>
+                  <th class="table-cell p-4">End Time</th>
+                  <th class="table-cell p-4">Actions</th>
                 </tr>
               </thead>
 
               <tbody
                 id="logs-table"
-                hx-get="/updateLogs"
+                hx-patch="/updateLogs"
                 hx-trigger="leslie from:body"
-                hx-target="this" 
+                hx-target="#logs-table" 
                 hx-swap="outerHTML"
+                class="table-row-group"
               >
                 { 
                   logs.map((l) => {
                     return (
-                      <tr>
-                        <td>n/a</td>
-                        <td>{l.projectId}</td>
-                        <td>{l.start?.toLocaleString()}</td>
-                        <td>{l.end?.toLocaleString()}</td>
-                        <td>n/a</td>
+                      <tr id={`log_${l.id}`} class="text-center table-row">
+                        <td class="table-cell">{getDuration(l)}</td>
+                        <td class="table-cell">{l.projectId}</td>
+                        <td class="table-cell">{l.start?.toLocaleString()}</td>
+                        <td class="table-cell">{l.end?.toLocaleString()}</td>
+                        <td class="table-cell flex items-center gap-2">
+                          <button
+                            type="button"
+                            hx-trigger="click"
+                            hx-confirm="Are you sure?"
+                            hx-delete={`/deleteLog/${l.id}`}
+                            hx-target={`#log_${l.id}`}
+                            hx-swap="delete"
+                            class="flex gap-2 text-red-500"
+                          >
+                            <div class="w-8 h-8">
+                              <svg viewbox="0 0 32 32" width="16" height="16" stroke="currentColor" fill="currentColor"><path d="M4 8L6.7 8 28 8" _id="63ce595bda5b7d1fa85644ef" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M25.3 8v18.7a2.7 2.7 0 0 1-2.6 2.6H9.3a2.7 2.7 0 0 1-2.6-2.6V8m4 0V5.3a2.7 2.7 0 0 1 2.6-2.6h5.4a2.7 2.7 0 0 1 2.6 2.6v2.7" _id="63ce595bda5b7d1fa85644f0" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M13.3 14.7L13.3 22.7" _id="63ce595bda5b7d1fa85644f1" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M18.7 14.7L18.7 22.7" _id="63ce595bda5b7d1fa85644f2" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><title>Trash</title></svg>
+                            </div>
+                            <div class="htmx-indicator w-8 h-8 animate-spin">
+                              <svg viewbox="0 0 32 32" width="32" height="32" stroke="currentColor" fill="currentColor"><path d="M11.1 9.6a1 1 0 0 1 0 1.4 1 1 0 0 1-1.5 0L6.8 8.2a1 1 0 0 1 1.4-1.4Zm-1.5 11.3l-2.8 2.9a1 1 0 0 0 0 1.4 1 1 0 0 0 0.7 0.3 1 1 0 0 0 0.7-0.3l2.9-2.8a1 1 0 0 0-1.5-1.5ZM9 16a1 1 0 0 0-1-1H4a1 1 0 0 0 0 2h4a1 1 0 0 0 1-1Zm7-13a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1Zm12 12h-4a1 1 0 0 0 0 2h4a1 1 0 0 0 0-2Zm-5.6 6a1 1 0 0 0-1.5 1.4l2.9 2.8a1 1 0 0 0 0.7 0.3 1 1 0 0 0 0.7-0.3 1 1 0 0 0 0-1.4ZM16 23a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Z"  /><title>Spinner</title></svg>
+                            </div>
+                          </button>
+                        </td>
                       </tr>
                     )
                   })
@@ -122,7 +141,7 @@ app.get("/", async (c) => {
 // ------------------------------------------ 
 
 
-// CRUD
+// HTMX CRUD
 
 app.post("/createProject", async (c) => {
   // make sure we're authed
@@ -180,9 +199,10 @@ app.patch("/punch/:id", async (c) => {
       .set({ end: new Date })
       .where(eq(schema.logs.id, project.logs[0].id));
 
+    c.header("HX-Trigger", "leslie");
     return c.html(
       <Puncher project={project} action='start' />
-    )
+    );
   }
 });
 
@@ -199,7 +219,6 @@ app.delete("/deleteProject/:id", async (c) => {
 });
 
 app.patch("/updateLogs", async (c) => {
-  console.log("/updateLogs");
   const logs = await db.query.logs.findMany({
     orderBy: desc(schema.logs.start)
   });
@@ -207,25 +226,64 @@ app.patch("/updateLogs", async (c) => {
   return c.html(
     <tbody
       id="logs-table"
-      hx-get="/updateLogs"
-      hx-trigger="click updateLogs from:body"
-      hx-target="this"
+      hx-patch="/updateLogs"
+      hx-trigger="leslie from:body"
+      hx-target="#logs-table" 
       hx-swap="outerHTML"
+      class="table-row-group"
     >
-    {
-      logs.map((l) => {
-        <tr>
-          <td>n/a</td>
-          <td>{l.projectId}</td>
-          <td>{l.start?.toLocaleString()}</td>
-          <td>{l.end?.toLocaleString()}</td>
-          <td>n/a</td>
-        </tr>
-      })
-    }
+      {
+        logs.map((l) => {
+          return (
+            <tr id={`log_${l.id}`} class="text-center table-row">
+              <td class="table-cell">{getDuration(l)}</td>
+              <td class="table-cell">{l.projectId}</td>
+              <td class="table-cell">{l.start?.toLocaleString()}</td>
+              <td class="table-cell">{l.end?.toLocaleString()}</td>
+              <td class="table-cell flex items-center gap-2">
+                <button
+                  type="button"
+                  hx-trigger="click"
+                  hx-confirm="Are you sure?"
+                  hx-delete={`/deleteLog/${l.id}`}
+                  hx-target={`#log_${l.id}`}
+                  hx-swap="delete"
+                  class="flex gap-2 items-center text-red-500"
+                >
+                  <div class="w-8 h-8 text-red-500">
+                    <svg viewbox="0 0 32 32" width="16" height="16" stroke="currentColor" fill="currentColor"><path d="M4 8L6.7 8 28 8" _id="63ce595bda5b7d1fa85644ef" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M25.3 8v18.7a2.7 2.7 0 0 1-2.6 2.6H9.3a2.7 2.7 0 0 1-2.6-2.6V8m4 0V5.3a2.7 2.7 0 0 1 2.6-2.6h5.4a2.7 2.7 0 0 1 2.6 2.6v2.7" _id="63ce595bda5b7d1fa85644f0" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M13.3 14.7L13.3 22.7" _id="63ce595bda5b7d1fa85644f1" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M18.7 14.7L18.7 22.7" _id="63ce595bda5b7d1fa85644f2" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><title>Trash</title></svg>
+                  </div>
+                  <div class="htmx-indicator w-8 h-8 animate-spin">
+                    <svg viewbox="0 0 32 32" width="32" height="32" stroke="currentColor" fill="currentColor"><path d="M11.1 9.6a1 1 0 0 1 0 1.4 1 1 0 0 1-1.5 0L6.8 8.2a1 1 0 0 1 1.4-1.4Zm-1.5 11.3l-2.8 2.9a1 1 0 0 0 0 1.4 1 1 0 0 0 0.7 0.3 1 1 0 0 0 0.7-0.3l2.9-2.8a1 1 0 0 0-1.5-1.5ZM9 16a1 1 0 0 0-1-1H4a1 1 0 0 0 0 2h4a1 1 0 0 0 1-1Zm7-13a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1Zm12 12h-4a1 1 0 0 0 0 2h4a1 1 0 0 0 0-2Zm-5.6 6a1 1 0 0 0-1.5 1.4l2.9 2.8a1 1 0 0 0 0.7 0.3 1 1 0 0 0 0.7-0.3 1 1 0 0 0 0-1.4ZM16 23a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Z"  /><title>Spinner</title></svg>
+                  </div>
+                </button>
+              </td>
+            </tr>
+          )
+        })
+      }
     </tbody>
   );
 });
+
+app.delete("/deleteLog/:id", async (c) => {
+  const log_id = c.req.param("id") as string;
+
+  await db
+    .delete(schema.logs)
+    .where( 
+      eq(schema.logs.id, Number.parseInt(log_id)) 
+    );
+
+  return c.html(<div />);
+});
+
+// ------------------------------------------ 
+
+// API endpoints
+
+
+
 
 
 // ------------------------------------------ 
@@ -307,7 +365,7 @@ app.get("/logout", async (c) => {
   auth_request.setSession(null);
   return c.body(null, {
     status: 302,
-    headers: { "Location": "/" }
+    headers: { Location: "/" }
   });
 });
 
