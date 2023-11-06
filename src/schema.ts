@@ -1,22 +1,75 @@
 import { relations } from "drizzle-orm";
-import { serial, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { bigint, serial, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+
+// data models 
+
+// from lucia
+export const user = pgTable("auth_user", {
+	id: varchar("id", {
+		length: 15 // change this when using custom user ids
+	}).primaryKey(),
+
+	// add other user attributes here
+  name: varchar("name"),
+});
 
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  userId: varchar("user_id").notNull()
 });
 
-export const sessions = pgTable("sessions", {
+export const logs = pgTable("logs", {
   id: serial("id").primaryKey(),
   start: timestamp("start").defaultNow(),
   end: timestamp("end"),
-  projectName: varchar("project_name").notNull()
+  projectId: serial("project_id").notNull()
 });
 
-export const projectsRelations = relations(projects, ({ many }) => ({
-  sessions: many(sessions)
+
+// model relationships
+export const user_relations = relations(user, ({ many }) => ({
+  projects: many(projects)
 }));
 
-export const sessionsRelations = relations(sessions, ({ one }) => ({
-  project: one(projects, { fields: [sessions.projectName], references: [projects.name] })
+export const project_relations = relations(projects, ({ one, many }) => ({
+  user: one(user, { fields: [projects.userId], references: [user.id] }),
+  logs: many(logs)
 }));
+
+export const session_relations = relations(logs, ({ one }) => ({
+  project: one(projects, { fields: [logs.projectId], references: [projects.id] })
+}));
+
+
+// DO NOT DELETE: used by lucia
+export const session = pgTable("user_session", {
+	id: varchar("id", {
+		length: 128
+	}).primaryKey(),
+	userId: varchar("user_id", {
+		length: 15
+	})
+		.notNull()
+		.references(() => user.id),
+	activeExpires: bigint("active_expires", {
+		mode: "number"
+	}).notNull(),
+	idleExpires: bigint("idle_expires", {
+		mode: "number"
+	}).notNull()
+});
+
+export const key = pgTable("user_key", {
+	id: varchar("id", {
+		length: 255
+	}).primaryKey(),
+	userId: varchar("user_id", {
+		length: 15
+	})
+		.notNull()
+		.references(() => user.id),
+	hashedPassword: varchar("hashed_password", {
+		length: 255
+	})
+});
