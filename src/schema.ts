@@ -23,7 +23,7 @@ export const logs = pgTable("logs", {
   id: serial("id").primaryKey(),
   start: timestamp("start").defaultNow(),
   end: timestamp("end"),
-  projectId: serial("project_id").notNull()
+  projectId: serial("project_id").notNull(),
 });
 
 

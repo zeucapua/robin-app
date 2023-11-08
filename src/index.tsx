@@ -9,14 +9,12 @@ import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
 import { pool, auth, github_auth } from './lucia';
-import { ProjectCreator, Puncher, SiteLayout } from './components';
+import { LogRow, ProjectCreator, Puncher, SiteLayout } from './components';
 import "dotenv/config";
-import { getDuration } from './utils';
 
 // init
 const app = new Hono();
 
-// exported for lucia to use
 const db = drizzle(pool, { schema });
 
 // ------------------------------------------ 
@@ -92,40 +90,13 @@ app.get("/", async (c) => {
               <tbody
                 id="logs-table"
                 hx-patch="/updateLogs"
-                hx-trigger="leslie from:body"
+                hx-trigger="updateLogs from:body"
                 hx-target="#logs-table" 
                 hx-swap="outerHTML"
                 class="table-row-group"
               >
                 { 
-                  logs.map((l) => {
-                    return (
-                      <tr id={`log_${l.id}`} class="text-center table-row">
-                        <td class="table-cell">{getDuration(l)}</td>
-                        <td class="table-cell">{l.projectId}</td>
-                        <td class="table-cell">{l.start?.toLocaleString()}</td>
-                        <td class="table-cell">{l.end?.toLocaleString()}</td>
-                        <td class="table-cell flex items-center gap-2">
-                          <button
-                            type="button"
-                            hx-trigger="click"
-                            hx-confirm="Are you sure?"
-                            hx-delete={`/deleteLog/${l.id}`}
-                            hx-target={`#log_${l.id}`}
-                            hx-swap="delete"
-                            class="flex gap-2 text-red-500"
-                          >
-                            <div class="w-8 h-8">
-                              <svg viewbox="0 0 32 32" width="16" height="16" stroke="currentColor" fill="currentColor"><path d="M4 8L6.7 8 28 8" _id="63ce595bda5b7d1fa85644ef" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M25.3 8v18.7a2.7 2.7 0 0 1-2.6 2.6H9.3a2.7 2.7 0 0 1-2.6-2.6V8m4 0V5.3a2.7 2.7 0 0 1 2.6-2.6h5.4a2.7 2.7 0 0 1 2.6 2.6v2.7" _id="63ce595bda5b7d1fa85644f0" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M13.3 14.7L13.3 22.7" _id="63ce595bda5b7d1fa85644f1" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M18.7 14.7L18.7 22.7" _id="63ce595bda5b7d1fa85644f2" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><title>Trash</title></svg>
-                            </div>
-                            <div class="htmx-indicator w-8 h-8 animate-spin">
-                              <svg viewbox="0 0 32 32" width="32" height="32" stroke="currentColor" fill="currentColor"><path d="M11.1 9.6a1 1 0 0 1 0 1.4 1 1 0 0 1-1.5 0L6.8 8.2a1 1 0 0 1 1.4-1.4Zm-1.5 11.3l-2.8 2.9a1 1 0 0 0 0 1.4 1 1 0 0 0 0.7 0.3 1 1 0 0 0 0.7-0.3l2.9-2.8a1 1 0 0 0-1.5-1.5ZM9 16a1 1 0 0 0-1-1H4a1 1 0 0 0 0 2h4a1 1 0 0 0 1-1Zm7-13a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1Zm12 12h-4a1 1 0 0 0 0 2h4a1 1 0 0 0 0-2Zm-5.6 6a1 1 0 0 0-1.5 1.4l2.9 2.8a1 1 0 0 0 0.7 0.3 1 1 0 0 0 0.7-0.3 1 1 0 0 0 0-1.4ZM16 23a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Z"  /><title>Spinner</title></svg>
-                            </div>
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })
+                  logs.map((l) => <LogRow log={l} editing={false} />)
                 }
               </tbody>
             </table>
@@ -136,6 +107,7 @@ app.get("/", async (c) => {
     </SiteLayout>
   );
 });
+
 
 
 // ------------------------------------------ 
@@ -152,8 +124,6 @@ app.post("/createProject", async (c) => {
   const user = session.user;
   const data = await c.req.parseBody(); 
   const project_name = data.new_project as string;
-
-  console.log("created", {project_name});
 
   const created_project = await db.insert(schema.projects)
     .values({ name: project_name, userId: user.userId })
@@ -188,7 +158,7 @@ app.patch("/punch/:id", async (c) => {
       .insert(schema.logs)
       .values({ projectId: Number.parseInt(project_id) });
 
-    c.header("HX-Trigger", "leslie");
+    c.header("HX-Trigger", "updateLogs");
     return c.html(
       <Puncher project={project} action='end' />
     );
@@ -199,7 +169,7 @@ app.patch("/punch/:id", async (c) => {
       .set({ end: new Date })
       .where(eq(schema.logs.id, project.logs[0].id));
 
-    c.header("HX-Trigger", "leslie");
+    c.header("HX-Trigger", "updateLogs");
     return c.html(
       <Puncher project={project} action='start' />
     );
@@ -227,43 +197,43 @@ app.patch("/updateLogs", async (c) => {
     <tbody
       id="logs-table"
       hx-patch="/updateLogs"
-      hx-trigger="leslie from:body"
+      hx-trigger="updateLogs from:body"
       hx-target="#logs-table" 
       hx-swap="outerHTML"
       class="table-row-group"
     >
       {
-        logs.map((l) => {
-          return (
-            <tr id={`log_${l.id}`} class="text-center table-row">
-              <td class="table-cell">{getDuration(l)}</td>
-              <td class="table-cell">{l.projectId}</td>
-              <td class="table-cell">{l.start?.toLocaleString()}</td>
-              <td class="table-cell">{l.end?.toLocaleString()}</td>
-              <td class="table-cell flex items-center gap-2">
-                <button
-                  type="button"
-                  hx-trigger="click"
-                  hx-confirm="Are you sure?"
-                  hx-delete={`/deleteLog/${l.id}`}
-                  hx-target={`#log_${l.id}`}
-                  hx-swap="delete"
-                  class="flex gap-2 items-center text-red-500"
-                >
-                  <div class="w-8 h-8 text-red-500">
-                    <svg viewbox="0 0 32 32" width="16" height="16" stroke="currentColor" fill="currentColor"><path d="M4 8L6.7 8 28 8" _id="63ce595bda5b7d1fa85644ef" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M25.3 8v18.7a2.7 2.7 0 0 1-2.6 2.6H9.3a2.7 2.7 0 0 1-2.6-2.6V8m4 0V5.3a2.7 2.7 0 0 1 2.6-2.6h5.4a2.7 2.7 0 0 1 2.6 2.6v2.7" _id="63ce595bda5b7d1fa85644f0" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M13.3 14.7L13.3 22.7" _id="63ce595bda5b7d1fa85644f1" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><path d="M18.7 14.7L18.7 22.7" _id="63ce595bda5b7d1fa85644f2" _parent="63ce595bda5b7d1fa85644ee" fill="none" stroke-width="2.65625" stroke-linejoin="round" stroke-linecap="round" /><title>Trash</title></svg>
-                  </div>
-                  <div class="htmx-indicator w-8 h-8 animate-spin">
-                    <svg viewbox="0 0 32 32" width="32" height="32" stroke="currentColor" fill="currentColor"><path d="M11.1 9.6a1 1 0 0 1 0 1.4 1 1 0 0 1-1.5 0L6.8 8.2a1 1 0 0 1 1.4-1.4Zm-1.5 11.3l-2.8 2.9a1 1 0 0 0 0 1.4 1 1 0 0 0 0.7 0.3 1 1 0 0 0 0.7-0.3l2.9-2.8a1 1 0 0 0-1.5-1.5ZM9 16a1 1 0 0 0-1-1H4a1 1 0 0 0 0 2h4a1 1 0 0 0 1-1Zm7-13a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0V4a1 1 0 0 0-1-1Zm12 12h-4a1 1 0 0 0 0 2h4a1 1 0 0 0 0-2Zm-5.6 6a1 1 0 0 0-1.5 1.4l2.9 2.8a1 1 0 0 0 0.7 0.3 1 1 0 0 0 0.7-0.3 1 1 0 0 0 0-1.4ZM16 23a1 1 0 0 0-1 1v4a1 1 0 0 0 2 0v-4a1 1 0 0 0-1-1Z"  /><title>Spinner</title></svg>
-                  </div>
-                </button>
-              </td>
-            </tr>
-          )
-        })
+        logs.map((l) => <LogRow log={l} editing={false} />)
       }
     </tbody>
   );
+});
+
+app.patch("/editLog/:id", async (c) => {
+  const log_id = c.req.param("id") as string;
+
+  const log = await db.query.logs.findFirst({
+    where: eq(schema.logs.id, Number.parseInt(log_id))
+  });
+
+  if (!log) { return c.status(500); }
+
+  return c.html(<LogRow log={log} editing={true} />);
+});
+
+app.patch("/confirmLogEdit/:id", async (c) => {
+  const log_id = c.req.param("id") as string;
+  const data = await c.req.parseBody();
+  const { start, end } = data;
+
+  console.log(start, end);
+
+  const log = await db.update(schema.logs).set({
+    start: new Date(start.toString()),
+    end: new Date(end.toString())
+  }).where( eq(schema.logs.id, Number.parseInt(log_id)) ).returning();
+
+  return c.html(<LogRow log={log[0]} editing={false} />);
 });
 
 app.delete("/deleteLog/:id", async (c) => {
@@ -282,8 +252,8 @@ app.delete("/deleteLog/:id", async (c) => {
 
 // API endpoints
 
-
-
+// TODO: implement OAuth?
+// TODO: CRUD endpoints (projects, logs)
 
 
 // ------------------------------------------ 
