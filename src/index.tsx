@@ -185,6 +185,7 @@ app.delete("/deleteProject/:id", async (c) => {
       eq(schema.projects.id, Number.parseInt(project_id))
     );
   
+  c.header("HX-Trigger", "updateLogs");
   return c.html(<div />);
 });
 
@@ -213,10 +214,13 @@ app.patch("/editLog/:id", async (c) => {
   const log_id = c.req.param("id") as string;
 
   const log = await db.query.logs.findFirst({
-    where: eq(schema.logs.id, Number.parseInt(log_id))
+    where: eq(schema.logs.id, Number.parseInt(log_id)),
+    orderBy: desc(schema.logs.start)
   });
 
   if (!log) { return c.status(500); }
+
+  console.log("/editLog", { log });
 
   return c.html(<LogRow log={log} editing={true} />);
 });
@@ -224,9 +228,9 @@ app.patch("/editLog/:id", async (c) => {
 app.patch("/confirmLogEdit/:id", async (c) => {
   const log_id = c.req.param("id") as string;
   const data = await c.req.parseBody();
-  const { start, end } = data;
 
-  console.log(start, end);
+  const start = data[`start_${log_id}`];
+  const end = data[`end_${log_id}`];
 
   const log = await db.update(schema.logs).set({
     start: new Date(start.toString()),

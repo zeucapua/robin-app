@@ -23,7 +23,7 @@ export const logs = pgTable("logs", {
   id: serial("id").primaryKey(),
   start: timestamp("start").defaultNow(),
   end: timestamp("end"),
-  projectId: serial("project_id").notNull(),
+  projectId: serial("project_id").notNull().references(() => projects.id, { onDelete: 'cascade' }),
 });
 
 
@@ -37,7 +37,7 @@ export const project_relations = relations(projects, ({ one, many }) => ({
   logs: many(logs)
 }));
 
-export const session_relations = relations(logs, ({ one }) => ({
+export const log_relations = relations(logs, ({ one }) => ({
   project: one(projects, { fields: [logs.projectId], references: [projects.id] })
 }));
 
