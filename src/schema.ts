@@ -24,6 +24,7 @@ export const logs = pgTable("logs", {
   start: timestamp("start").defaultNow(),
   end: timestamp("end"),
   projectId: serial("project_id").notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  note: varchar("note")
 });
 
 

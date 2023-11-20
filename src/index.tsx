@@ -38,11 +38,6 @@ app.get("/", async (c) => {
     }
   }); 
 
-  let logs = undefined;
-  logs = user && await db.query.logs.findMany({
-    orderBy: desc(schema.logs.start)
-  });
-
   return c.html(
     <SiteLayout>
       <nav class="flex w-full p-4 justify-between">
@@ -75,14 +70,14 @@ app.get("/", async (c) => {
           </div>
 
           <h3>Your Log Table</h3>
-          { logs && (
+          { 
             <table class="overflow-hidden w-full table table-auto border-separate border border-slate-500 rounded-xl p-0">
               <thead class="table-header-group">
                 <tr class="table-row text-start border-b-2 border-slate-500">
                   <th class="table-cell p-4">Duration</th>
                   <th class="table-cell p-4">Project</th>
                   <th class="table-cell p-4">Start Time</th>
-                  <th class="table-cell p-4">End Time</th>
+                  <th class="hidden lg:block table-cell p-4">End Time</th>
                   <th class="table-cell p-4">Actions</th>
                 </tr>
               </thead>
@@ -90,17 +85,15 @@ app.get("/", async (c) => {
               <tbody
                 id="logs-table"
                 hx-patch="/updateLogs"
-                hx-trigger="updateLogs from:body"
+                hx-trigger="load"
                 hx-target="#logs-table" 
                 hx-swap="outerHTML"
                 class="table-row-group"
               >
-                { 
-                  logs.map((l) => <LogRow log={l} editing={false} />)
-                }
+                <svg class="htmx-indicator" viewbox="0 0 32 32" width="32" height="32" stroke="currentColor" fill="currentColor"><path d="M19 3c0 1.7-1.3 3-3 3s-3-1.3-3-3 1.3-3 3-3 3 1.3 3 3z m0 26c0 1.7-1.3 3-3 3s-3-1.3-3-3 1.3-3 3-3 3 1.3 3 3zM0 16c0-1.7 1.3-3 3-3s3 1.3 3 3-1.3 3-3 3-3-1.3-3-3z m32 0c0 1.7-1.3 3-3 3s-3-1.3-3-3 1.3-3 3-3 3 1.3 3 3zM4.7 27.3c-1.2-1.2-1.2-3.1 0-4.2 1.2-1.2 3.1-1.2 4.2 0 1.2 1.2 1.2 3.1 0 4.2-1.2 1.2-3.1 1.2-4.2 0z m4.2-18.4c-1.2 1.2-3.1 1.2-4.2 0-1.2-1.2-1.2-3.1 0-4.2 1.2-1.2 3.1-1.2 4.2 0 1.2 1.2 1.2 3.1 0 4.2z m14.2 14.2c1.2-1.2 3.1-1.2 4.2 0 1.2 1.2 1.2 3.1 0 4.2-1.2 1.2-3.1 1.2-4.2 0-1.2-1.2-1.2-3.1 0-4.2z"  /><title>Spinner</title></svg>
               </tbody>
             </table>
-          )}
+          }
           </>
         )}
       </main>
